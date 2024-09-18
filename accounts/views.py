@@ -1,3 +1,5 @@
+import datetime
+
 from django.shortcuts import render, redirect
 from django.views import View
 from .forms import UserRegistrationForm, VerifyCodeForm
@@ -5,6 +7,8 @@ from utils import send_opt_code
 import random
 from .models import OptCode, User
 from django.contrib import messages
+from datetime import timedelta
+from django.utils import timezone
 
 
 class UserRegisterView(View):
@@ -45,14 +49,20 @@ class UserRegisterVerifyCodeView(View):
         form = self.form_class(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            print('='*90)
-            print(code_instance.code)
             if cd['code'] == code_instance.code:
-                User.objects.create_user(user_session['phone_number'], user_session['email'], user_session['full_name'],
-                                         user_session['password'])
-                code_instance.delete()
-                messages.success(request, 'you registered', 'success')
-                return redirect('home:home')
+                user = OptCode.objects.filter(phone_number=user_session['phone_number']).values('created')
+                user = list(user)
+                expired = user[0]['created'] + timedelta(minutes=2)
+                if timezone.now() <= expired:
+                    User.objects.create_user(user_session['phone_number'], user_session['email'], user_session['full_name'],
+                                             user_session['password'])
+                    code_instance.delete()
+                    messages.success(request, 'you registered', 'success')
+                    return redirect('home:home')
+                else:
+                    messages.error(request, 'you code is expired, please try again', 'danger')
+                    code_instance.delete()
+                    return render(request, 'accounts/register.html', {'form': form})
             else:
                 messages.error(request, 'this code is wrong.', 'danger')
                 return redirect('accounts:verify_code')

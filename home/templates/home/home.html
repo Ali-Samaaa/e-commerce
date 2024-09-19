@@ -1,4 +1,10 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block extera_header %}
+    <link rel="stylesheet" href="{% static 'home/css/styles.css' %}">
+{% endblock %}
+
 {% block content %}
     <h3>Hello User!</h3>
 {% endblock %}
